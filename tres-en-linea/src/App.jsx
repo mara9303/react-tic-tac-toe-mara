@@ -1,4 +1,6 @@
+/* eslint-disable react/prop-types */
 import { useState } from "react";
+import { FaArrowDownWideShort, FaArrowUpShortWide } from "react-icons/fa6";
 import "./App.css";
 
 function Square({ value, onSquareClick }) {
@@ -16,28 +18,29 @@ function Board({ xIsNext, squares, onPlay }) {
     : "Siguiente jugador: " + (xIsNext ? "X" : "O");
 
   function handleClick(i) {
+    console.log("onSquareClick: ", i)
+    const nextSquares = squares.slice();
+    nextSquares[i] = xIsNext ? "X" : "O";
     if (squares[i] || calculateWinner(squares)) {
       return;
     }
-    const nextSquares = squares.slice();
-    nextSquares[i] = xIsNext ? "X" : "O";
     onPlay(nextSquares);
   }
 
   return (
     <>
       <div className="status">{status}</div>
-      {squares.map((item, index) => {
-        if (index % 3 === 0) {
+      {squares.map((item, indexRow) => {
+        if (indexRow % 3 === 0) {
           return (
-            <div key={index} className="board-row">
-              {squares.map((element, iElement) => {
-                if (iElement >= index && iElement < index + 3) {
+            <div key={indexRow} className="board-row">
+              {squares.map((element, indexColumn) => {
+                if (indexColumn >= indexRow && indexColumn < indexRow + 3) {
                   return (
                     <Square
-                      key={iElement}
+                      key={indexColumn}
                       value={element}
-                      onSquareClick={() => handleClick(iElement)}
+                      onSquareClick={() => handleClick(indexColumn)}
                     />
                   );
                 }
@@ -56,15 +59,45 @@ function Move({ description, onJumpTo, isButton }) {
       {isButton ? (
         <button onClick={onJumpTo}>{description}</button>
       ) : (
-        <p>{description}</p>
+        <p onClick={onJumpTo}>{description}</p>
       )}
+    </>
+  );
+}
+
+function MoveList({initialMoves}) {
+  console.log(initialMoves)
+  return (
+    <>
+      <ol>
+      {initialMoves}
+    </ol>
+    </>
+  );
+}
+
+function OrderMoves({orderMoves, onOrder}) {
+  //const [order, setOrder] = useState(initialOrderMoves);
+  return (
+    <>
+      <div>
+        <button onClick={onOrder}>
+          {orderMoves ? (
+            <FaArrowDownWideShort />
+          ) : (
+            <FaArrowUpShortWide />
+          )}
+        </button>
+      </div>
     </>
   );
 }
 
 function App() {
   const [history, setHistory] = useState([Array(9).fill(null)]);
+  const [movesH, setmovesH] = useState(Array(9).fill(null));
   const [currentMove, setCurrentMove] = useState(0);
+  const [orderMoves, setOrderMoves] = useState(true);
   const xIsNext = currentMove % 2 === 0;
   const currentSquares = history[currentMove];
 
@@ -72,37 +105,52 @@ function App() {
     const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
     setHistory(nextHistory);
     setCurrentMove(nextHistory.length - 1);
+    setmovesH(loopHistory(history))
+  }
+
+  function handleOrder() {
+    //setmovesH(history)
+    console.log("CurrentMove ", currentMove);
+    setOrderMoves(!orderMoves);
+    const descMoves = movesH.reverse();
+    setmovesH(descMoves);
+    //console.log("DESC Post moves",movesH);
   }
 
   function jumpTo(nextMove) {
-    console.log([currentMove, nextMove]);
+    console.log("Next: " + nextMove);
     setCurrentMove(nextMove);
+    console.log("currentMove", currentMove);
   }
 
-  const moves = history.map((squares, move) => {
-    let description;
-    let currentAndNextSame = true;
-
-    if (move > 0) {
-      description = "Ir al movimiento #" + move;
-    } else {
-      description = "Ir al inicio del juego";
-    }
-
-    if (currentMove === move) {
-      description = `Estás en el movimiento #${move}`;
-      currentAndNextSame = false;
-    }
-    return (
-      <li key={move}>
-        <Move
-          description={description}
-          onJumpTo={() => jumpTo(move)}
-          isButton={currentAndNextSame}
-        ></Move>
-      </li>
-    );
-  });
+  function loopHistory(historyToLoop){
+    const loopMoves = historyToLoop.map((squares, move) => {
+      console.log(currentMove, move);
+      let description;
+      let currentAndNextSame = true;
+  
+      //if (move > 0) {
+        description = "Ir al movimiento #" + move;
+      /*} else {
+        description = "Ir al inicio del juego";
+      }*/
+  
+      if (currentMove === move) {
+        description = `Estás en el movimiento #${move}`;
+        currentAndNextSame = false;
+      }
+      return (
+        <li key={move}>
+          <Move
+            description={description}
+            onJumpTo={() => jumpTo(move+1)}
+            isButton={currentAndNextSame}
+          ></Move>
+        </li>
+      );
+    })
+    return loopMoves;
+  }
 
   return (
     <div className="game">
@@ -110,7 +158,8 @@ function App() {
         <Board xIsNext={xIsNext} squares={currentSquares} onPlay={handlePlay} />
       </div>
       <div className="game-info">
-        <ol>{moves}</ol>
+        <OrderMoves orderMoves={orderMoves} onOrder={handleOrder}/>
+        <MoveList initialMoves={movesH} />
       </div>
     </div>
   );
